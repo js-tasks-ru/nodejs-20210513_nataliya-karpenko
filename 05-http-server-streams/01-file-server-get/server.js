@@ -35,25 +35,12 @@ server.on('request', (req, res) => {
         } else {
           const rst = fs.createReadStream(filepath);
           req
-              .pipe(rst)
               .on('error', (e) => {
                 res.statusCode = 500;
                 res.end(e.message);
               });
+          req.pipe(rst, {end: false}).pipe(res);
 
-          // rst.on('readable', (error, data) => {
-          //   const buffer = rst.read();
-          //   if (buffer) res.write(buffer);
-          //   //res.end();
-          // });
-
-          // rst.on('close', (data) => {
-          //   res.write(data);
-          //   res.end();
-          // });
-
-          rst.pipe(res);
-          
           req.on('aborted', () => {
             fs.unlink(filepath, ()=>{});
             rst.destroy();
