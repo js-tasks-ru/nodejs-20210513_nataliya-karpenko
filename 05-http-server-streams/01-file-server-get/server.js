@@ -12,23 +12,57 @@ server.on('request', (req, res) => {
 
   switch (req.method) {
     case 'GET':
-      const p = pathname.split('/');
-      const str = new fs.ReadStream(filepath);
-      str.on('readable', (error, data) => {
-        const buffer = str.read();
-        if (buffer) res.write(buffer);
-        res.end();
-      });
+      // const p = pathname.split('/');
+      // const str = new fs.ReadStream(filepath);
+      // req.pipe(str)
+      //     .on('finish', () => {
+      //       const buffer = str.read();
+      //       if (buffer) res.write(buffer);
+      //       res.end();
+      //     })
 
-      str.on('error', (error) => {
-        if (error) {
-          if (error.code === 'ENOENT') {
-            res.statusCode = 404;
-            if (p.length > 1) res.statusCode = 400;
-            res.end();
-          }
+      //     .on('error', (error) => {
+      //       if (error.code === 'ENOENT') res.statusCode = 404;
+      //       if (p.length > 1) res.statusCode = 400;
+      //       res.end();
+      //     });
+      // break;
+
+      if (path.dirname(req.url) === '/') {
+        if (!fs.existsSync(filepath)) {
+          res.statusCode = 404;
+          res.end();
+        } else {
+          const rst = fs.createReadStream(filepath);
+          req
+              .pipe(rst)
+              .on('error', (e) => {
+                res.statusCode = 500;
+                res.end(e.message);
+              });
+
+          // rst.on('readable', (error, data) => {
+          //   const buffer = rst.read();
+          //   if (buffer) res.write(buffer);
+          //   //res.end();
+          // });
+
+          // rst.on('close', (data) => {
+          //   res.write(data);
+          //   res.end();
+          // });
+
+          rst.pipe(res);
+          
+          req.on('aborted', () => {
+            fs.unlink(filepath, ()=>{});
+            rst.destroy();
+          });
         }
-      });
+      } else {
+        res.statusCode = 400;
+        res.end();
+      }
       break;
 
     default:
