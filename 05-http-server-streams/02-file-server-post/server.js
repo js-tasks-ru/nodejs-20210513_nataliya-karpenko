@@ -14,34 +14,35 @@ server.on('request', (req, res) => {
   switch (req.method) {
     case 'POST':
       if (path.dirname(req.url) === '/') {
-        if (fs.existsSync(filepath)) {
-          res.statusCode = 409;
-          res.end();
-        } else {
-          const wst = fs.createWriteStream(filepath, {flags: 'wx'});
-          const limitS = new Lst({limit: 1048576});
-          req.pipe(limitS)
-              .on('error', (e) => {
-                fs.unlink(filepath, ()=>{});
-                res.statusCode = 413;
-                res.end(e.message);
-              })
-              .pipe(wst)
-              .on('error', (e) => {
+        const wst = fs.createWriteStream(filepath, {flags: 'wx'});
+        const limitS = new Lst({limit: 1048576});
+        req
+            .pipe(limitS)
+            .on('error', (e) => {
+              fs.unlink(filepath, () => {});
+              res.statusCode = 413;
+              res.end(e.message);
+            })
+            .pipe(wst)
+            .on('error', (e) => {
+              if (e.code !== 'ENOENT') {
+                res.statusCode = 409;
+                res.end();
+              } else {
                 res.statusCode = 500;
                 res.end(e.message);
-              });
+              }
+            });
 
-          wst.on('finish', () => {
-            res.statusCode = 201;
-            res.end('success');
-          });
+        wst.on('finish', () => {
+          res.statusCode = 201;
+          res.end('success');
+        });
 
-          req.on('aborted', () => {
-            fs.unlink(filepath, ()=>{});
-            wst.destroy();
-          });
-        }
+        req.on('aborted', () => {
+          fs.unlink(filepath, () => {});
+          wst.destroy();
+        });
       } else {
         res.statusCode = 400;
         res.end();

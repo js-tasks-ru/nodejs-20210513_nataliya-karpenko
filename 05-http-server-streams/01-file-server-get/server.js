@@ -13,23 +13,22 @@ server.on('request', (req, res) => {
   switch (req.method) {
     case 'GET':
       if (path.dirname(req.url) === '/') {
-        if (!fs.existsSync(filepath)) {
-          res.statusCode = 404;
-          res.end();
-        } else {
-          const rst = fs.createReadStream(filepath);
-          req
-              .on('error', (e) => {
-                res.statusCode = 500;
-                res.end(e.message);
-              });
-          req.pipe(rst, {end: false}).pipe(res);
+        const rst = fs.createReadStream(filepath);
+        rst.on('error', (e) => {
+          if (e.code === 'ENOENT') {
+            res.statusCode = 404;
+            res.end();
+          } else {
+            res.statusCode = 500;
+            res.end(e.message);
+          }
+        });
+        rst.pipe(res);
 
-          req.on('aborted', () => {
-            fs.unlink(filepath, ()=>{});
-            rst.destroy();
-          });
-        }
+        req.on('aborted', () => {
+          fs.unlink(filepath, () => {});
+          rst.destroy();
+        });
       } else {
         res.statusCode = 400;
         res.end();
